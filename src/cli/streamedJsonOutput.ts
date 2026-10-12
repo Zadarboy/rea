@@ -4,6 +4,7 @@ import type { Writable } from "node:stream";
 import { Cli, Filter } from "incur";
 
 import { parseCliOutputArguments } from "../cliOutput.js";
+import { isCliOperationFailure } from "../cliLogging.js";
 import { AnalysisResourceConstraintError } from "../domain/analysisErrorCore.js";
 import {
   projectAnalysisError,
@@ -165,10 +166,17 @@ export const createStreamedCliJsonOutput = (
           ),
         );
       }
+      // The envelope's ok flag must agree with the process exit code, which
+      // logCliCommand derives from the unfiltered command value. A command
+      // failure therefore renders as { ok: false, error } instead of being
+      // wrapped in a success envelope.
+      const commandFailed = isCliOperationFailure(value);
       const document = options.fullOutput
-        ? filtered === undefined
-          ? { ok: true, meta }
-          : { ok: true, data: filtered, meta }
+        ? commandFailed
+          ? { ok: false, error: filtered, meta }
+          : filtered === undefined
+            ? { ok: true, meta }
+            : { ok: true, data: filtered, meta }
         : filtered === undefined ||
             filtered === null ||
             typeof filtered === "function" ||
