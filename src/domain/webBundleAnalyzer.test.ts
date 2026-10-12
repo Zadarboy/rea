@@ -321,6 +321,44 @@ describe("web bundle API classification parity", () => {
     ]);
   });
 
+  it("keeps configuration setting reads out of endpoints in both analyzers", () => {
+    const source = `
+      vscode.workspace.getConfiguration("git").get("autofetch");
+      getConfiguration("git").get("enabled", true);
+      const config = vscode.workspace.getConfiguration("git");
+      config.get("autofetchPeriod", 180);
+      config.get("/v1/settings");
+      let c = Mt.workspace.getConfiguration("git", uri), l = c.get("timeline.date");
+      let changed = vscode.workspace.getConfiguration("git");
+      changed = api;
+      changed.get("reassigned");
+      const maybe = flag ? vscode.workspace.getConfiguration("git") : api;
+      maybe.get("conditional");
+      {
+        const config = api;
+        config.get("shadowed");
+      }
+      api.get("users");
+    `;
+    const expected = [
+      "/v1/settings",
+      "conditional",
+      "reassigned",
+      "shadowed",
+      "users",
+    ];
+    expect(
+      analyzeCapturedWebBundle(inspection(source))
+        .observations.endpoints.map(({ value }) => value)
+        .sort(),
+    ).toEqual(expected);
+    expect(
+      analyzeJavaScriptStaticSource(source)
+        .endpoints.map(({ value }) => value)
+        .sort(),
+    ).toEqual(expected);
+  });
+
   it("recognizes loadURL endpoints like static analysis", () => {
     const result = analyzeCapturedWebBundle(
       inspection('window.win.loadURL("https://embedded.test/app");'),

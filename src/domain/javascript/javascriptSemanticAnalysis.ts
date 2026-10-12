@@ -237,19 +237,24 @@ export function* classifyParsedJavaScriptRpcClientRootsSteps(
   return roots;
 }
 
-/** Receiver identity facts for the overloaded `.open` syntax only. */
+/**
+ * Receiver identity facts for the overloaded `.open` syntax, plus
+ * `configuration` for `.get` reads of a `getConfiguration(...)` result.
+ */
 export type JavaScriptOpenReceiverFact =
   | "window"
   | "indexed-db"
   | "cache-storage"
   | "local"
   | "local-indexed-db"
-  | "local-cache-storage";
+  | "local-cache-storage"
+  | "configuration";
 
 /**
  * Resolve only the lexical receiver identity needed to distinguish browser
- * `window.open` from XHR and global storage `.open` calls. This deliberately
- * builds definitions without running semantic value or provenance analysis.
+ * `window.open` from XHR and global storage `.open` calls, and configuration
+ * `.get` reads from HTTP client calls. This deliberately builds definitions
+ * without running semantic value or provenance analysis.
  */
 export const classifyParsedJavaScriptOpenReceivers = (
   file: ParsedJavaScriptSource,
@@ -268,14 +273,19 @@ export function* classifyParsedJavaScriptOpenReceiversSteps(
       if (
         (!t.isCallExpression(node) && !t.isOptionalCallExpression(node)) ||
         (!t.isMemberExpression(node.callee) &&
-          !t.isOptionalMemberExpression(node.callee)) ||
-        semanticStaticPropertyKey(
-          node.callee.property,
-          node.callee.computed,
-        ) !== "open" ||
-        !t.isIdentifier(node.callee.object)
+          !t.isOptionalMemberExpression(node.callee))
       )
         return;
+      const method = semanticStaticPropertyKey(
+        node.callee.property,
+        node.callee.computed,
+      );
+      if (method === "get") {
+        if (isConfigurationReceiver(state, node.callee.object))
+          facts.set(node.start ?? -1, "configuration");
+        return;
+      }
+      if (method !== "open" || !t.isIdentifier(node.callee.object)) return;
       const receiver = node.callee.object.name;
       const binding = resolveSemanticBindingState(state, node, receiver);
       if (binding === undefined) {
@@ -340,6 +350,41 @@ export function* classifyParsedJavaScriptOpenReceiversSteps(
   });
   return facts;
 }
+
+/**
+ * Whether a call spells a configuration accessor such as VS Code's
+ * `workspace.getConfiguration(section)`, whose result `.get` reads setting
+ * keys rather than request paths.
+ */
+const isConfigurationAccessorCall = (node: t.Node): boolean =>
+  (t.isCallExpression(node) || t.isOptionalCallExpression(node)) &&
+  (t.isIdentifier(node.callee)
+    ? node.callee.name === "getConfiguration"
+    : (t.isMemberExpression(node.callee) ||
+        t.isOptionalMemberExpression(node.callee)) &&
+      semanticStaticPropertyKey(node.callee.property, node.callee.computed) ===
+        "getConfiguration");
+
+/**
+ * Whether a `.get` receiver is a configuration accessor result, either inline
+ * or through a binding whose only visible write is one unconditional
+ * initializer. Minifiers emit `let` for such bindings, so declaration kind
+ * alone does not decide.
+ */
+const isConfigurationReceiver = (
+  state: JavaScriptSemanticAnalysisState,
+  receiver: t.Node,
+): boolean => {
+  if (isConfigurationAccessorCall(receiver)) return true;
+  if (!t.isIdentifier(receiver)) return false;
+  const binding = resolveSemanticBindingState(state, receiver, receiver.name);
+  const initializer = semanticStableInitializer(binding, state);
+  return (
+    initializer !== undefined &&
+    initializer.projection.length === 0 &&
+    isConfigurationAccessorCall(initializer.node)
+  );
+};
 
 const openGlobalFact = (
   name: string,
