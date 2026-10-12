@@ -89,6 +89,13 @@ it.runIf(process.platform !== "win32")(
   },
 );
 
+it("passes an executable path and arguments with spaces through unchanged", async () => {
+  const directory = await createTestTempDirectory("rea-runner-arguments-");
+  expect(
+    await launch(directory, 'process.stdout.write("two words")').closed,
+  ).toMatchObject({ code: 0, stdout: "two words" });
+});
+
 it("does not treat an old database timestamp as permission to replace a live owner", async () => {
   const directory = await createTestTempDirectory("rea-runner-live-");
   const runner = launch(

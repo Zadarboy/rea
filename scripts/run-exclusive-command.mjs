@@ -74,7 +74,7 @@ function runCommand() {
     child = spawn(command[0], command.slice(1), {
       cwd: process.cwd(),
       env: process.env,
-      shell: process.platform === "win32",
+      shell: needsWindowsShell(command[0]),
       stdio: "inherit",
     });
     child.once("error", reject);
@@ -86,6 +86,13 @@ function runCommand() {
         resolveResult({ code });
     });
   });
+}
+
+// Bare npm and turbo commands resolve to .cmd shims, which Windows runs only
+// through cmd.exe. Node passes that shell an unquoted command line, so spawn
+// executables directly to keep paths and arguments with spaces intact.
+function needsWindowsShell(executable) {
+  return process.platform === "win32" && !/\.(?:com|exe)$/iu.test(executable);
 }
 
 function disconnectParent() {
