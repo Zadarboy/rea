@@ -43,7 +43,18 @@ describe("official operation arguments", () => {
     const execute: AnalysisOperationPort["execute"] = (name, parameters) => {
       calls.push({ name, parameters });
       return Promise.resolve(
-        observed(name === "search_strings" ? [] : "int main() {}"),
+        observed(
+          name === "search_bytes"
+            ? {
+                matches: [],
+                searched: { blocks: [], bytes: 0, skipped_uninitialized: [] },
+                complete: true,
+                next_cursor: null,
+              }
+            : name === "search_strings"
+              ? []
+              : "int main() {}",
+        ),
       );
     };
     const createSession = () =>
@@ -59,6 +70,7 @@ describe("official operation arguments", () => {
     const client = await connect({ execute });
     for (const [name, mcpParameters, cliParameters] of [
       ["procedure_pseudo_code", { procedure: "main" }, { procedure: "main" }],
+      ["search_bytes", { pattern: "48 ??" }, { pattern: "48 ??", limit: 100 }],
       [
         "search_strings",
         { pattern: "entry" },
@@ -93,6 +105,11 @@ describe("official operation arguments", () => {
       ["list_procedures", { document: null }],
       ["procedure_pseudo_code", { procedure: "main", document: 3 }],
       ["search_strings", { pattern: "entry", case_sensitive: null }],
+      ["search_bytes", { pattern: "??" }],
+      ["search_bytes", { pattern: "48 8B", mask: "ff" }],
+      ["search_bytes", { pattern: "4?" }],
+      ["search_bytes", { pattern: "48", limit: 1001 }],
+      ["search_bytes", { pattern: "48", cursor: null }],
     ] as const) {
       const result = await client.callTool({ name, arguments: parameters });
       expect(result.isError).toBe(true);
