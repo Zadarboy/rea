@@ -151,6 +151,59 @@ it("preserves a failed owned cleanup retry when the next caller cancels before a
   }
 });
 
+it("ends worker stdin and unreferences process handles when cleanup reports inspection uncertainty", async () => {
+  let stdinEnded = false;
+  let unreferenced = false;
+  let permitCleanup = false;
+  let childStdin: typeof process.stdin | undefined;
+  const worker = new JavaScriptAnalysisWorker(
+    { heapMb: 128, timeoutMs: 30_000 },
+    async (request) => {
+      const launched = await spawnOwnedProviderProcess(request);
+      const originalUnref = launched.process.unref;
+      launched.process.unref = () => {
+        unreferenced = true;
+        originalUnref?.call(launched.process);
+      };
+      childStdin = launched.process.stdin as unknown as typeof process.stdin;
+      launched.process.stdin?.once("finish", () => {
+        stdinEnded = true;
+      });
+      return {
+        ...launched,
+        cleanup: async () =>
+          permitCleanup
+            ? launched.cleanup === undefined
+              ? cleanupOwnedProcessGroup(launched.ownership)
+              : launched.cleanup()
+            : {
+                cleaned: false,
+                reason: "process table could not be inspected: spawn EPERM",
+              },
+      };
+    },
+  );
+  try {
+    const file = source("app.mjs", "export const observed = 7;");
+    const result = await worker.analyze(file, 100);
+    if (!result.ok) throw result.error.error;
+    const closing = worker.close();
+    await expect(closing).rejects.toBeInstanceOf(ProviderCleanupError);
+    await expect(closing).rejects.toMatchObject({
+      cause: {
+        message: "process table could not be inspected: spawn EPERM",
+      },
+    });
+    expect(childStdin?.writableEnded || stdinEnded).toBe(true);
+    expect(unreferenced).toBe(true);
+    permitCleanup = true;
+    await worker.close();
+  } finally {
+    permitCleanup = true;
+    await worker.close().catch(() => {});
+  }
+});
+
 // The handshake mirrors the real server: only Node.js reports an enforced V8 heap limit.
 const resourceFailureWorker = (heapLimit: string) =>
   new JavaScriptAnalysisWorker({ heapMb: 128, timeoutMs: 30_000 }, (request) =>

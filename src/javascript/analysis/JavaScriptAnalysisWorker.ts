@@ -786,20 +786,34 @@ export class JavaScriptAnalysisWorker {
     if (this.#supervisor !== undefined) {
       const supervisor = this.#supervisor;
       const stopped = await supervisor.stop();
+      supervisor.launch.process.stdout?.off("data", this.#onStdout);
       if (stopped.status === "incomplete") {
+        try {
+          const stdin = supervisor.launch.process.stdin;
+          if (stdin !== undefined && stdin !== null && !stdin.destroyed) {
+            stdin.on("error", () => {});
+            stdin.end();
+          }
+        } catch {
+          // Cooperative protocol stdin may already be closed or broken.
+        }
+        this.#resetState();
         pendingCleanup.add(this);
         return this.#cleanupError(stopped.reason, original);
       }
-      supervisor.launch.process.stdout?.off("data", this.#onStdout);
       supervisor.dispose();
       this.#supervisor = undefined;
     }
+    this.#resetState();
+    return undefined;
+  }
+
+  #resetState(): void {
     this.#ready = false;
     this.#frames = [];
     this.#pending = "";
     this.#decoder = new StringDecoder("utf8");
     this.#protocolFailure = undefined;
-    return undefined;
   }
 }
 
