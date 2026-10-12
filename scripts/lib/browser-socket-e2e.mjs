@@ -2,10 +2,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { listBrowserTargetsInputSchema } from "../../dist/domain/browserObservation.js";
+import {
+  inspectWebPageInputSchema,
+  listBrowserTargetsInputSchema,
+} from "../../dist/domain/browserObservation.js";
+import { compareWebCapturesInputSchema } from "../../dist/domain/webCaptureDiffSchemas.js";
 import { artifactCliEvidence } from "./artifact-e2e.mjs";
 
-/** Verify browser-socket discovery against HTTP discovery and its CLI Evidence. */
+/** Verify browser-socket discovery and inspection against HTTP discovery. */
 export async function verifyBrowserSocketTransport({
   provider,
   profile,
@@ -17,6 +21,12 @@ export async function verifyBrowserSocketTransport({
     await readFile(join(profile, "DevToolsActivePort"), "utf8")
   ).split("\n");
   const socket = `ws://127.0.0.1:${port}${path}`;
+  const version = await (await fetch(`${endpoint}/json/version`)).json();
+  assert.equal(
+    new URL(version.webSocketDebuggerUrl).pathname,
+    path,
+    "DevToolsActivePort and /json/version named different browser sockets",
+  );
   const list = async (cdpEndpoint) => {
     const listed = await provider.listTargets(
       listBrowserTargetsInputSchema.parse({
@@ -65,6 +75,24 @@ export async function verifyBrowserSocketTransport({
     !JSON.stringify(evidence).includes(path),
     "Browser-socket Evidence retained the socket identifier",
   );
+  const throughHttpInspection = await provider.inspectPage(
+    inspectWebPageInputSchema.parse({
+      cdp_endpoint: endpoint,
+      allowed_origins: [origin],
+      target_id: target,
+      observation_ms: 100,
+    }),
+  );
+  if (!throughHttpInspection.ok) throw throughHttpInspection.error;
+  const compared = await provider.compareCaptures(
+    compareWebCapturesInputSchema.parse({
+      before: { inspection: throughHttpInspection.value },
+      after: { inspection: evidence.normalized_result },
+    }),
+  );
+  if (!compared.ok) throw compared.error;
+  assert.equal(compared.value.dimensions.dom_structure.status, "unchanged");
+  assert.equal(compared.value.dimensions.scripts.status, "unchanged");
   return {
     targets: throughSocket.targets.length,
     revision: throughSocket.browser.revision,
