@@ -519,7 +519,8 @@ const decodeUtf8 = (
   label: string,
 ): string => {
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(
+    // Length-prefixed names carry U+FEFF as data, not a stream byte-order mark.
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
       bytes.subarray(start, end),
     );
   } catch (cause: unknown) {
