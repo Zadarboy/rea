@@ -18,6 +18,7 @@ import {
   AnalysisArtifactChangedError,
   AnalysisInputError,
   AnalysisOutputError,
+  AnalysisUnsupportedTargetError,
 } from "../domain/analysisErrorCore.js";
 import { ProviderCleanupError } from "../domain/providerCleanupError.js";
 import { createEvidence } from "../domain/evidence.js";
@@ -34,6 +35,10 @@ import { wabtFailure } from "./WabtFailures.js";
 import { parseWabtOutput } from "./WabtOutput.js";
 import { parseWabtWat } from "./WabtWat.js";
 import { associateWasmGlue } from "./WasmGlueAdapter.js";
+import {
+  isWasmComponent,
+  readWasmPreamble,
+} from "../domain/wasm/wasmPreamble.js";
 
 type Launcher = NonNullable<Parameters<typeof runOwnedCommand>[2]>["launcher"];
 const OPERATION = "inspect_wasm_artifact";
@@ -201,6 +206,16 @@ export class WabtArtifactProvider implements WasmArtifactPort {
         WABT_LIMITS.inputBytes,
         options?.signal,
       );
+      if (isWasmComponent(readWasmPreamble(selected.bytes)))
+        throw new AnalysisUnsupportedTargetError(
+          OPERATION,
+          input.path,
+          "WebAssembly component (layer 1), not a core module; WABT decodes core modules only",
+          {
+            remediationAction:
+              "Decode WebAssembly components with inspect_wasm_component.",
+          },
+        );
       const artifact = {
         path: input.path,
         sha256: selected.sha256,

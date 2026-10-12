@@ -86,6 +86,11 @@ explicit path or endpoint and do not need it.
   Select JavaScript glue and candidate paths explicitly and preserve URL/path
   ambiguity. No implicit fetch or target execution; WAT is not original source.
   See the [WASM guide](https://github.com/morluto/rea/blob/main/docs/wasm-artifacts.md).
+- Explicit local WebAssembly component (preamble version `0xd`, layer 1):
+  `inspect_wasm_component`. This built-in decoder needs no WABT and never
+  executes the component. Use its imports, exports, types and `lifts`/`lowers`
+  to connect component functions to core module exports and imports. Validation
+  is not performed; `coverage.not_decoded` and null indices mark what is unknown.
 - Explicit local EVM bytecode carrier: `inspect_evm_interface` with caller-selected
   `raw` or `hex` encoding. Preserve carrier/decoded digests and treat selectors,
   argument strings and mutability as inferred candidates; this performs no chain
