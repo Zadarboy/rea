@@ -1,3 +1,9 @@
+import { randomBytes } from "node:crypto";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { createTestTempDirectory } from "../../fixtures/temporaryDirectory.js";
+import { byteEntropySchema } from "../../../src/domain/native/byteEntropy.js";
+import { TOOL_EFFECTS } from "../../../src/contracts/toolEffects.js";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { expect, it, onTestFinished } from "vitest";
@@ -102,6 +108,81 @@ it("advertises exact valid schemas and records inline layout without a binary ta
       await client.callTool({
         name: "inspect_binary_layout",
         arguments: { path: "relative.elf" },
+      })
+    ).isError,
+  ).toBe(true);
+});
+
+it("profiles real bytes with exact offsets, valid advertised schemas and read-only effects", async () => {
+  const root = await createTestTempDirectory("rea-entropy-mcp-");
+  const path = join(root, "firmware.bin");
+  await writeFile(
+    path,
+    Buffer.concat([
+      Buffer.alloc(4096),
+      randomBytes(4096),
+      Buffer.from("ordinary text ".repeat(400)),
+    ]),
+  );
+  const session = createTestBinarySession(() => {
+    throw new Error("No provider needed");
+  });
+  const server = createServer({ kind: "session", session });
+  const client = new Client({ name: "entropy-contract", version: "1" });
+  onTestFinished(async () => {
+    await client.close();
+    await server.close();
+    await session.close();
+  });
+  const [clientTransport, serverTransport] =
+    InMemoryTransport.createLinkedPair();
+  await server.connect(serverTransport);
+  await client.connect(clientTransport);
+  const advertised = (await client.listTools()).tools.find(
+    (tool) => tool.name === "inspect_byte_entropy",
+  );
+  if (!advertised?.outputSchema) throw new Error("Missing entropy schema");
+  const ajv = new Ajv2020({ strict: false, validateFormats: false });
+  const inputSchema: Record<string, unknown> = advertised.inputSchema;
+  const outputSchema: Record<string, unknown> = advertised.outputSchema;
+  expect(ajv.validateSchema(inputSchema)).toBe(true);
+  expect(ajv.validateSchema(outputSchema)).toBe(true);
+  expect(ajv.validate(inputSchema, { path, surprise: true })).toBe(false);
+  const response = await client.callTool({
+    name: "inspect_byte_entropy",
+    arguments: { path },
+  });
+  expect(response.isError).not.toBe(true);
+  expect(
+    ajv.validate(outputSchema, response.structuredContent),
+    JSON.stringify(ajv.errors),
+  ).toBe(true);
+  const evidence = parseEvidence(response.structuredContent);
+  const report = byteEntropySchema.parse(evidence.normalized_result);
+  expect(report.runs).toEqual([
+    { offset: 0, length: 4096, classification: "low" },
+    { offset: 4096, length: 4096, classification: "high" },
+  ]);
+  expect(
+    report.blocks.map(({ offset, length }) => ({ offset, length })),
+  ).toEqual([
+    { offset: 0, length: 4096 },
+    { offset: 4096, length: 4096 },
+    { offset: 8192, length: 4096 },
+    { offset: 12288, length: 1504 },
+  ]);
+  expect(session.evidenceById(evidence.evidence_id)).toEqual(evidence);
+  expect(TOOL_EFFECTS.inspect_byte_entropy).toMatchObject({
+    launchesProcess: false,
+    writesFilesystem: false,
+    accessesNetwork: false,
+    mutatesTarget: false,
+  });
+  expect(
+    (
+      await client.callTool({
+        name: "inspect_byte_entropy",
+        arguments: { path, offset: 999999 },
       })
     ).isError,
   ).toBe(true);
