@@ -52,6 +52,6 @@ export const zipPackageFormatForPath = (
   return undefined;
 };
 
-/** Inventory cannot see bytes that are not central-directory entries. */
+/** Non-entry bytes are omitted regardless of their position in the archive. */
 export const ZIP_NON_ENTRY_TAIL_LIMITATION =
-  "ZIP inventory lists central-directory entries only. Bytes after the central directory, including an APK Signing Block or a ZIP comment, are not occurrences.";
+  "ZIP inventory lists central-directory entries only. Non-entry data, including an APK Signing Block before the central directory or a ZIP comment, is not represented as occurrences.";

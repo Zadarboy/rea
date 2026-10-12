@@ -17,6 +17,41 @@ import { parseEvidence } from "../../../../src/domain/evidence.js";
 
 const { runProviderAnalysis } = createDirectAnalysis({});
 
+describe("artifact archive comment coverage", () => {
+  it("hashes archive comments without inventing entry occurrences", async () => {
+    const root = await createTestTempDirectory("rea-zip-comment-coverage-");
+    const writer = new ZipWriter(new Uint8ArrayWriter());
+    await writer.add("content.txt", new TextReader("same entry"));
+    const firstBytes = await writer.close(new TextEncoder().encode("first"));
+    // Equal-length comments let us change only the final comment bytes.
+    const secondBytes = Uint8Array.from(firstBytes);
+    secondBytes.set(new TextEncoder().encode("other"), secondBytes.length - 5);
+    const firstPath = join(root, "first.zip");
+    const secondPath = join(root, "second.zip");
+    await writeFile(firstPath, firstBytes);
+    await writeFile(secondPath, secondBytes);
+    const first = await inventory(target(firstPath, "zip"));
+    const second = await inventory(target(secondPath, "zip"));
+    expect(first.manifest.root_sha256).not.toBe(second.manifest.root_sha256);
+    const children = (result: typeof first) =>
+      result.occurrences.filter(
+        ({ parent_occurrence_id }) => parent_occurrence_id !== null,
+      );
+    expect(children(first)).toHaveLength(1);
+    expect(children(second)).toHaveLength(1);
+    expect(children(first)[0]).toMatchObject({
+      logical_path: "content.txt",
+      hash_status: "verified",
+      artifact_id: children(second)[0]?.artifact_id,
+    });
+    expect(children(first)[0]?.artifact_id).not.toBeNull();
+    for (const result of [first, second])
+      expect(result.limitations).toContain(
+        "ZIP inventory lists central-directory entries only. Non-entry data, including an APK Signing Block before the central directory or a ZIP comment, is not represented as occurrences.",
+      );
+  });
+});
+
 describe("artifact archive inventory", () => {
   it("returns complete ZIP and official ASAR inventories inline", async () => {
     const root = await createTestTempDirectory("rea-containers-");
