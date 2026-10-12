@@ -274,6 +274,11 @@ describe("native IDA provider observations", () => {
       );
       if (!result.ok) throw result.error;
       expect(result.value.provider.name).toBe("IDA MCP adapter");
+      if (operation === "xrefs")
+        expect(
+          result.value.referencesTruncated,
+          "the native producer's explicit cap flag is forwarded",
+        ).toBe(false);
       if (operation === "procedure_assembly")
         expect(result.value.result).toBe("0x1000: ret");
       if (operation === "procedure_pseudo_code") {
@@ -321,6 +326,25 @@ describe("native IDA provider observations", () => {
         ({ operation }) => operation === "procedure_callers",
       )?.available,
     ).toBe(true);
+  });
+
+  it("does not admit the headless-only containment and document operations", async () => {
+    const { client, producer } = await fixture();
+    for (const [operation, parameters] of [
+      ["resolve_containing_procedure", { address: "0x1000" }],
+      ["list_documents", {}],
+    ] as const) {
+      const result = await client.execute(operation, parameters);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok)
+        expect(result.error._tag).toBe("AnalysisCapabilityUnavailableError");
+    }
+    expect(
+      producer.calls.some(({ name }) => name === "lookup_funcs"),
+      "nothing is dispatched upstream",
+    ).toBe(false);
+    await client.close();
   });
 
   it("rejects unavailable or mismatched recorded input hashes and database switches", async () => {

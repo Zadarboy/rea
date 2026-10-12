@@ -20,7 +20,8 @@ export const workflowAnalysisProfile = (
     upstream_analysis_profile: upstream,
     ...(operation === "binary_overview" ||
     operation === "batch_decompile" ||
-    operation === "get_call_graph"
+    operation === "get_call_graph" ||
+    operation === "trace_feature"
       ? { workflow_revision: 2 }
       : {}),
   });
