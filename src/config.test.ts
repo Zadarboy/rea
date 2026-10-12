@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { userInfo } from "node:os";
+
 import { parseConfig } from "./config/parseConfig.js";
+import { homeDirectoryFromEnvironment } from "./config/homeDirectory.js";
 import { projectAnalysisError } from "./domain/analysisErrorProjection.js";
 
 describe("runtime configuration", () => {
@@ -276,5 +279,38 @@ describe("configuration failure diagnostics", () => {
           ],
         },
       });
+  });
+});
+
+describe("home directory selection", () => {
+  it.each([
+    [{ HOME: "" }, "darwin"],
+    [{ HOME: "", USERPROFILE: "" }, "linux"],
+    [{ USERPROFILE: "", HOMEDRIVE: "", HOMEPATH: "", HOME: "" }, "win32"],
+  ] as const)(
+    "treats empty home variables %j on %s as unset",
+    (environment, platform) => {
+      expect(homeDirectoryFromEnvironment(environment, platform)).toBe(
+        userInfo().homedir,
+      );
+    },
+  );
+
+  it("keeps a selected home and falls back past empty Windows profile variables", () => {
+    expect(homeDirectoryFromEnvironment({ HOME: "/selected" }, "darwin")).toBe(
+      "/selected",
+    );
+    expect(
+      homeDirectoryFromEnvironment(
+        { USERPROFILE: "", HOMEDRIVE: "C:", HOMEPATH: "\\Users\\me" },
+        "win32",
+      ),
+    ).toBe("C:\\Users\\me");
+    expect(
+      homeDirectoryFromEnvironment(
+        { USERPROFILE: "", HOMEDRIVE: "", HOMEPATH: "", HOME: "/home/me" },
+        "win32",
+      ),
+    ).toBe("/home/me");
   });
 });
