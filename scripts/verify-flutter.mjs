@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { readdir, readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdtemp, readdir, readFile, rmdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { toolContract } from "../dist/contracts/toolContracts.js";
-import { PrivateRuntimeRoot } from "../dist/process/PrivateRuntimeRoot.js";
 import { hashStableFile } from "../dist/filesystem/StableFileHash.js";
 import { mcpTextValue } from "./lib/mcp-verifier-results.mjs";
 
@@ -27,17 +27,16 @@ const expectations =
   options.expectations === null
     ? null
     : JSON.parse(await readFile(options.expectations, "utf8"));
-const root = await PrivateRuntimeRoot.create({
-  prefix: "rea-flutter-verifier-",
-});
+// This is a shared test parent, not a leased provider-owned Windows runtime.
+const root = await mkdtemp(join(tmpdir(), "rea-flutter-verifier-"));
 const entrypoint = resolve("scripts/rea.mjs");
 const environment = Object.fromEntries(
   Object.entries(process.env).filter(([, value]) => typeof value === "string"),
 );
 Object.assign(environment, {
-  TMPDIR: root.path,
-  TMP: root.path,
-  TEMP: root.path,
+  TMPDIR: root,
+  TMP: root,
+  TEMP: root,
 });
 const client = new Client({ name: "flutter-verifier", version: "1" });
 const transport = new StdioClientTransport({
@@ -191,15 +190,15 @@ try {
   // Server shutdown retries retained provider cleanup and must settle before success.
   try {
     await client.close();
-    await transport.close();
-    assert.deepEqual(
-      await readdir(root.path),
-      [],
-      "Provider snapshots must be released before verification succeeds",
-    );
   } finally {
-    await root.close();
+    await transport.close();
   }
+  assert.deepEqual(
+    await readdir(root),
+    [],
+    `Provider snapshots remain under ${root}`,
+  );
+  await rmdir(root);
 }
 process.stdout.write(
   "all asserted Flutter CLI/MCP checks passed; unverified facets are reported above\n",
