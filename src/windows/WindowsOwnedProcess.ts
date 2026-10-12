@@ -295,7 +295,9 @@ export class WindowsOwnedProcess extends EventEmitter {
       // Native lifecycle failures belong to the error/cleanup channels, never
       // the captured stderr observation produced by the child itself.
       if (this.listenerCount("error") > 0) this.emit("error", failure);
-      // Retain the original job so explicit cleanup can retry its observation.
+      // Keep the retained job observable so a transient poll failure cannot
+      // let owner shutdown close a live inferior's kill-on-close Job Object.
+      this.#schedule();
     }
   }
 
