@@ -69,7 +69,7 @@ msgstr "によってN0zoM1z0•10 10月2026"
 #: website/public/faq/index.html:569
 #: website/public/first-investigation/index.html:519
 #: website/public/get-started/index.html:878
-#: website/public/guides/browser/index.html:494
+#: website/public/guides/browser/index.html:503
 #: website/public/guides/index.html:278
 #: website/public/guides/javascript/index.html:499
 #: website/public/guides/native/index.html:505 website/public/index.html:1187
@@ -4440,7 +4440,7 @@ msgctxt "page:guides/browser/index.html"
 msgid "Copy read the loaded scripts"
 msgstr "ロードされたスクリプトをコピーして読みます"
 
-#: website/public/guides/browser/index.html:494
+#: website/public/guides/browser/index.html:503
 msgctxt "page:guides/browser/index.html"
 msgid "Back to top"
 msgstr "ページ上部へ"
@@ -10971,7 +10971,7 @@ msgstr "ガイド"
 #: website/public/faq/index.html:561
 #: website/public/first-investigation/index.html:511
 #: website/public/get-started/index.html:870
-#: website/public/guides/browser/index.html:486
+#: website/public/guides/browser/index.html:495
 #: website/public/guides/index.html:270
 #: website/public/guides/javascript/index.html:491
 #: website/public/guides/native/index.html:497 website/public/index.html:1179
@@ -10991,7 +10991,7 @@ msgstr "ソースコード"
 #: website/public/faq/index.html:562
 #: website/public/first-investigation/index.html:512
 #: website/public/get-started/index.html:871
-#: website/public/guides/browser/index.html:487
+#: website/public/guides/browser/index.html:496
 #: website/public/guides/index.html:271
 #: website/public/guides/javascript/index.html:492
 #: website/public/guides/native/index.html:498 website/public/index.html:1180
@@ -11011,7 +11011,7 @@ msgstr "MIT ライセンス"
 #: website/public/faq/index.html:563
 #: website/public/first-investigation/index.html:513
 #: website/public/get-started/index.html:872
-#: website/public/guides/browser/index.html:488
+#: website/public/guides/browser/index.html:497
 #: website/public/guides/index.html:272
 #: website/public/guides/javascript/index.html:493
 #: website/public/guides/native/index.html:499 website/public/index.html:1181
@@ -11031,7 +11031,7 @@ msgstr "コミュニティに参加"
 #: website/public/faq/index.html:564
 #: website/public/first-investigation/index.html:514
 #: website/public/get-started/index.html:873
-#: website/public/guides/browser/index.html:489
+#: website/public/guides/browser/index.html:498
 #: website/public/guides/index.html:273
 #: website/public/guides/javascript/index.html:494
 #: website/public/guides/native/index.html:500 website/public/index.html:1182
@@ -11936,6 +11936,22 @@ msgstr "メイン/{ph0} *クリップボード受信機"
 msgctxt "page:index.html"
 msgid "Get started {ph0}"
 msgstr "はじめる {ph0}"
+
+#. {ph0}: <a href="https://github.com/morluto/rea/blob/main/docs/web-network-
+#. captures.md" >
+#. {ph1}: </a >
+#: website/public/guides/browser/index.html:476
+#, python-brace-format
+msgctxt "page:guides/browser/index.html"
+msgid ""
+"For HTTP request and response bodies, use {ph0}Fiddler Everywhere: SAZ "
+"captures, MCP and public skills{ph1}. Export SAZ or HAR 1.2 for offline REA "
+"capture Evidence, or connect Everywhere's MCP server to inspect captured "
+"traffic with your agent."
+msgstr ""
+"HTTP リクエストとレスポンスの本文を調べるには、{ph0}Fiddler Everywhere：SAZ "
+"キャプチャ、MCP、公開スキル{ph1}を利用してください。SAZ ??? HAR 1.2 をエクスポートすれば REA でオフラインのキャプチャ "
+"Evidence を取得できます。また、Everywhere の MCP サーバーを接続して、エージェントと一緒に記録済みの通信を調べることもできます。"
 
 #~ msgctxt "page:index.html"
 #~ msgid "Setup guide"

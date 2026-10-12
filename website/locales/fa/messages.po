@@ -70,7 +70,7 @@ msgstr "توسط N0zoM1z0 * 10 اکتبر 2026"
 #: website/public/faq/index.html:569
 #: website/public/first-investigation/index.html:519
 #: website/public/get-started/index.html:878
-#: website/public/guides/browser/index.html:494
+#: website/public/guides/browser/index.html:503
 #: website/public/guides/index.html:278
 #: website/public/guides/javascript/index.html:499
 #: website/public/guides/native/index.html:505 website/public/index.html:1187
@@ -4694,7 +4694,7 @@ msgctxt "page:guides/browser/index.html"
 msgid "Copy read the loaded scripts"
 msgstr "کپی خواندن اسکریپت های لود شده"
 
-#: website/public/guides/browser/index.html:494
+#: website/public/guides/browser/index.html:503
 msgctxt "page:guides/browser/index.html"
 msgid "Back to top"
 msgstr "بازگشت به بالا"
@@ -11564,7 +11564,7 @@ msgstr "راهنماها"
 #: website/public/faq/index.html:561
 #: website/public/first-investigation/index.html:511
 #: website/public/get-started/index.html:870
-#: website/public/guides/browser/index.html:486
+#: website/public/guides/browser/index.html:495
 #: website/public/guides/index.html:270
 #: website/public/guides/javascript/index.html:491
 #: website/public/guides/native/index.html:497 website/public/index.html:1179
@@ -11584,7 +11584,7 @@ msgstr "کد منبع"
 #: website/public/faq/index.html:562
 #: website/public/first-investigation/index.html:512
 #: website/public/get-started/index.html:871
-#: website/public/guides/browser/index.html:487
+#: website/public/guides/browser/index.html:496
 #: website/public/guides/index.html:271
 #: website/public/guides/javascript/index.html:492
 #: website/public/guides/native/index.html:498 website/public/index.html:1180
@@ -11604,7 +11604,7 @@ msgstr "مجوز MIT"
 #: website/public/faq/index.html:563
 #: website/public/first-investigation/index.html:513
 #: website/public/get-started/index.html:872
-#: website/public/guides/browser/index.html:488
+#: website/public/guides/browser/index.html:497
 #: website/public/guides/index.html:272
 #: website/public/guides/javascript/index.html:493
 #: website/public/guides/native/index.html:499 website/public/index.html:1181
@@ -11624,7 +11624,7 @@ msgstr "به جامعه بپیوندید"
 #: website/public/faq/index.html:564
 #: website/public/first-investigation/index.html:514
 #: website/public/get-started/index.html:873
-#: website/public/guides/browser/index.html:489
+#: website/public/guides/browser/index.html:498
 #: website/public/guides/index.html:273
 #: website/public/guides/javascript/index.html:494
 #: website/public/guides/native/index.html:500 website/public/index.html:1182
@@ -12552,6 +12552,23 @@ msgstr "اصلی/{ph0} * گیرنده کلیپ بورد"
 msgctxt "page:index.html"
 msgid "Get started {ph0}"
 msgstr "شروع کنید {ph0}"
+
+#. {ph0}: <a href="https://github.com/morluto/rea/blob/main/docs/web-network-
+#. captures.md" >
+#. {ph1}: </a >
+#: website/public/guides/browser/index.html:476
+#, python-brace-format
+msgctxt "page:guides/browser/index.html"
+msgid ""
+"For HTTP request and response bodies, use {ph0}Fiddler Everywhere: SAZ "
+"captures, MCP and public skills{ph1}. Export SAZ or HAR 1.2 for offline REA "
+"capture Evidence, or connect Everywhere's MCP server to inspect captured "
+"traffic with your agent."
+msgstr ""
+"برای بررسی بدنهٔ درخواست‌ها و پاسخ‌های HTTP، از {ph0}Fiddler Everywhere: "
+"ضبط‌های SAZ، سرور MCP و مهارت‌های عمومی{ph1} استفاده کنید. برای Evidence ضبط"
+" در REA به‌صورت آفلاین، خروجی SAZ ?? HAR 1.2 بگیرید، یا سرور MCP نرم‌افزار "
+"Everywhere را متصل کنید تا ترافیک ضبط‌شده را با عامل خود بررسی کنید."
 
 #~ msgctxt "page:index.html"
 #~ msgid "Setup guide"

@@ -10,12 +10,14 @@ export const WEB_NETWORK_CAPTURE_LIMITS = {
   depth: 64,
 } as const;
 
+export const WEB_NETWORK_CAPTURE_FORMATS = ["har", "mitmproxy", "saz"] as const;
+
 /** Inspect an explicit retained capture without contacting its recorded destinations. */
 export const inspectWebNetworkCaptureInputSchema = z.strictObject({
   capture_path: localPathStringSchema.describe(
-    "Absolute local HAR or mitmproxy capture path.",
+    "Absolute local HAR, mitmproxy, or Fiddler SAZ capture path.",
   ),
-  format: z.enum(["har", "mitmproxy"]),
+  format: z.enum(WEB_NETWORK_CAPTURE_FORMATS),
   record_ordinals: z
     .array(z.number().int().nonnegative())
     .min(1)
@@ -84,6 +86,10 @@ export const webNetworkCaptureRecordSchema = z.strictObject({
       reason: z.literal("explicit-sensitive-value"),
     }),
     z.strictObject({ kind: z.literal("json-pointer"), pointer: pointerSchema }),
+    z.strictObject({
+      kind: z.literal("archive-members"),
+      members: z.array(z.string()).min(1),
+    }),
     z.strictObject({
       kind: z.literal("byte-range"),
       offset: z.number().int().nonnegative(),
@@ -156,7 +162,7 @@ export const webNetworkCaptureSchema =
         ),
       bytes: z.number().int().nonnegative(),
     }),
-    format: z.enum(["har", "mitmproxy"]),
+    format: z.enum(WEB_NETWORK_CAPTURE_FORMATS),
     runtime_attribution: z.literal("unknown"),
     limitations: z.array(z.string()),
   });

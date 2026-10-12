@@ -70,7 +70,7 @@ msgstr "โดย N0zoM1z0 ·10 ตุลาคม 2026"
 #: website/public/faq/index.html:569
 #: website/public/first-investigation/index.html:519
 #: website/public/get-started/index.html:878
-#: website/public/guides/browser/index.html:494
+#: website/public/guides/browser/index.html:503
 #: website/public/guides/index.html:278
 #: website/public/guides/javascript/index.html:499
 #: website/public/guides/native/index.html:505 website/public/index.html:1187
@@ -4674,7 +4674,7 @@ msgctxt "page:guides/browser/index.html"
 msgid "Copy read the loaded scripts"
 msgstr "คัดลอกอ่านสคริปต์ที่โหลด"
 
-#: website/public/guides/browser/index.html:494
+#: website/public/guides/browser/index.html:503
 msgctxt "page:guides/browser/index.html"
 msgid "Back to top"
 msgstr "กลับขึ้นด้านบน"
@@ -11461,7 +11461,7 @@ msgstr "คู่มือ"
 #: website/public/faq/index.html:561
 #: website/public/first-investigation/index.html:511
 #: website/public/get-started/index.html:870
-#: website/public/guides/browser/index.html:486
+#: website/public/guides/browser/index.html:495
 #: website/public/guides/index.html:270
 #: website/public/guides/javascript/index.html:491
 #: website/public/guides/native/index.html:497 website/public/index.html:1179
@@ -11481,7 +11481,7 @@ msgstr "ซอร์สโค้ด"
 #: website/public/faq/index.html:562
 #: website/public/first-investigation/index.html:512
 #: website/public/get-started/index.html:871
-#: website/public/guides/browser/index.html:487
+#: website/public/guides/browser/index.html:496
 #: website/public/guides/index.html:271
 #: website/public/guides/javascript/index.html:492
 #: website/public/guides/native/index.html:498 website/public/index.html:1180
@@ -11501,7 +11501,7 @@ msgstr "สัญญาอนุญาต MIT"
 #: website/public/faq/index.html:563
 #: website/public/first-investigation/index.html:513
 #: website/public/get-started/index.html:872
-#: website/public/guides/browser/index.html:488
+#: website/public/guides/browser/index.html:497
 #: website/public/guides/index.html:272
 #: website/public/guides/javascript/index.html:493
 #: website/public/guides/native/index.html:499 website/public/index.html:1181
@@ -11521,7 +11521,7 @@ msgstr "เข้าร่วมชุมชน"
 #: website/public/faq/index.html:564
 #: website/public/first-investigation/index.html:514
 #: website/public/get-started/index.html:873
-#: website/public/guides/browser/index.html:489
+#: website/public/guides/browser/index.html:498
 #: website/public/guides/index.html:273
 #: website/public/guides/javascript/index.html:494
 #: website/public/guides/native/index.html:500 website/public/index.html:1182
@@ -12448,6 +12448,24 @@ msgstr "หลัก/{ph0} *รับคลิปบอร์ด"
 msgctxt "page:index.html"
 msgid "Get started {ph0}"
 msgstr "เริ่มต้น {ph0}"
+
+#. {ph0}: <a href="https://github.com/morluto/rea/blob/main/docs/web-network-
+#. captures.md" >
+#. {ph1}: </a >
+#: website/public/guides/browser/index.html:476
+#, python-brace-format
+msgctxt "page:guides/browser/index.html"
+msgid ""
+"For HTTP request and response bodies, use {ph0}Fiddler Everywhere: SAZ "
+"captures, MCP and public skills{ph1}. Export SAZ or HAR 1.2 for offline REA "
+"capture Evidence, or connect Everywhere's MCP server to inspect captured "
+"traffic with your agent."
+msgstr ""
+"หากต้องการตรวจสอบเนื้อหาคำขอและคำตอบ HTTP ให้ใช้ {ph0}Fiddler Everywhere: "
+"ข้อมูลที่บันทึกในรูปแบบ SAZ, MCP และทักษะสาธารณะ{ph1} ส่งออกเป็น SAZ ???? "
+"HAR 1.2 เพื่อรับ Evidence จากข้อมูลที่บันทึกใน REA แบบออฟไลน์ "
+"หรือเชื่อมต่อเซิร์ฟเวอร์ MCP ของ Everywhere "
+"เพื่อตรวจสอบทราฟฟิกที่บันทึกไว้ร่วมกับเอเจนต์ของคุณ"
 
 #~ msgctxt "page:index.html"
 #~ msgid "Setup guide"
