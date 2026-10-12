@@ -9,6 +9,7 @@ import type { BrowserObservationOperation } from "../domain/browserObservationEr
 import { sanitizeBrowserUrl } from "../domain/browserObservation.js";
 import { urlDeclaresQueryOrFragment } from "../domain/urlComponents.js";
 import { safeParseJson } from "../domain/safeJson.js";
+import type { CdpConnection } from "./CdpConnection.js";
 
 const endpointVersionSchema = z.object({
   Browser: z.string().min(1),
@@ -28,6 +29,26 @@ const endpointTargetSchema = z.object({
   webSocketDebuggerUrl: z.string().min(1).optional(),
 });
 const endpointTargetsSchema = z.array(endpointTargetSchema);
+
+const browserSocketVersionSchema = z.object({
+  protocolVersion: z.string().min(1),
+  product: z.string().min(1),
+  revision: z.string(),
+  userAgent: z.string(),
+  jsVersion: z.string(),
+});
+
+const browserSocketTargetsSchema = z.object({
+  targetInfos: z.array(
+    z.object({
+      targetId: z.string().min(1),
+      type: z.string().min(1),
+      title: z.string().default(""),
+      url: z.string(),
+      attached: z.boolean().optional(),
+    }),
+  ),
+});
 
 /** Validated direct CDP WebSocket bound to one discovered page target. */
 interface CdpPageWebSocketEndpoint {
@@ -109,6 +130,42 @@ export const discoverCdpEndpoint = async (
       url: target.url,
       attached: target.attached ?? null,
       ...targetWebSocket(endpoint, target, operation),
+    })),
+  };
+};
+
+/** Read discovery facts over a browser socket that has no HTTP discovery. */
+export const discoverCdpBrowserSocket = async (
+  connection: CdpConnection,
+  url: string,
+  operation: BrowserObservationOperation,
+  signal?: AbortSignal,
+): Promise<CdpEndpointDiscovery> => {
+  const version = parseCdpEndpointValue(
+    browserSocketVersionSchema,
+    await connection.send("Browser.getVersion", {}, undefined, signal),
+    operation,
+  );
+  const targets = parseCdpEndpointValue(
+    browserSocketTargetsSchema,
+    await connection.send("Target.getTargets", {}, undefined, signal),
+    operation,
+  );
+  return {
+    webSocket: { scope: "browser", url },
+    version: {
+      product: version.product,
+      protocol_version: version.protocolVersion,
+      revision: version.revision,
+      user_agent: version.userAgent,
+      js_version: version.jsVersion,
+    },
+    targets: targets.targetInfos.map((target) => ({
+      id: target.targetId,
+      type: target.type,
+      title: sanitizeTargetTitle(target.title, target.url),
+      url: target.url,
+      attached: target.attached ?? null,
     })),
   };
 };
