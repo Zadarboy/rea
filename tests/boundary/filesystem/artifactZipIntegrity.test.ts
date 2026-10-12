@@ -40,6 +40,13 @@ it("completes an empty ZIP extraction with an empty identity", async () => {
 
 it.each([
   ["legacy CP437", Buffer.from([0x82, 0x2e, 0x74, 0x78, 0x74]), false, "é.txt"],
+  ["legacy ASCII control", Buffer.from("Icon\r"), false, "Icon\r"],
+  [
+    "legacy CP437 control",
+    Buffer.from([0x82, 0x09, 0x7f, 0x2e, 0x61]),
+    false,
+    "é\t\u007F.a",
+  ],
   [
     "EFS with leading U+FEFF",
     Buffer.from([0xef, 0xbb, 0xbf, 0x61, 0x62]),
