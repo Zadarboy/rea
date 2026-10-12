@@ -82,6 +82,8 @@ for (const little of [true, false]) {
       relocationCount: 2,
       relocationTypes: [0, 3],
       symbolRelativeCount: 0,
+      linkBase: 0,
+      prelinkBase: null,
     });
     assert.equal(ghidraMipsUnsupportedReason(target), null);
     assert.deepEqual(ghidraMipsProfileParameters(target).mips_elf, {
@@ -109,6 +111,17 @@ for (const little of [true, false]) {
       /Symbol-bearing R_MIPS_REL32/u,
     );
   });
+  it(`records a prelink trailer Ghidra would prefer over PT_LOAD (${little ? "LE" : "BE"})`, async () => {
+    const base = Buffer.alloc(4);
+    if (little) base.writeUInt32LE(0x40000000);
+    else base.writeUInt32BE(0x40000000);
+    const target = await resolve(
+      Buffer.concat([fixture(little), base, Buffer.from("PRE\0", "latin1")]),
+    );
+    assert.equal(target.mips.sharedLoad?.status, "complete");
+    if (target.mips.sharedLoad?.status === "complete")
+      assert.equal(target.mips.sharedLoad.prelinkBase, 0x40000000);
+  });
 }
 
 it("examines relocation records beyond a read chunk before deciding completeness", async () => {
@@ -121,6 +134,8 @@ it("examines relocation records beyond a read chunk before deciding completeness
     relocationCount: count,
     relocationTypes: [0, 3],
     symbolRelativeCount: 1,
+    linkBase: 0,
+    prelinkBase: null,
   });
   assert.match(ghidraMipsUnsupportedReason(target) ?? "", /mode tag/u);
 });
@@ -217,6 +232,8 @@ it("retains unverified relocation type instead of claiming every examined record
     relocationCount: 2,
     relocationTypes: [0, 5],
     symbolRelativeCount: 0,
+    linkBase: 0,
+    prelinkBase: null,
   });
   assert.match(
     ghidraMipsUnsupportedReason(target) ?? "",
