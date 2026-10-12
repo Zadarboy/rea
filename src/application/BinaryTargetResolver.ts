@@ -9,6 +9,11 @@ import {
 } from "node:fs/promises";
 import { extname, isAbsolute, resolve } from "node:path";
 
+import {
+  isCoreWasmModule,
+  isWasmComponent,
+  readWasmPreamble,
+} from "../domain/wasm/wasmPreamble.js";
 import { BinaryTargetError } from "../domain/configurationErrors.js";
 import {
   openRegularFile,
@@ -279,14 +284,18 @@ const detectArtifactFormat = async (
   const magic = Buffer.alloc(8);
   const observed = await handle.read(magic, 0, magic.length, 0);
   throwIfTargetResolutionCancelled(signal);
-  if (
-    observed.bytesRead === 8 &&
-    magic.equals(Buffer.from([0, 0x61, 0x73, 0x6d, 1, 0, 0, 0]))
-  )
+  const wasm = readWasmPreamble(magic.subarray(0, observed.bytesRead));
+  if (isCoreWasmModule(wasm))
     throw new BinaryTargetError(
       path,
       "WebAssembly v1 artifacts are not supported by the native opening route",
       { constraint: "wasm_requires_static_inspection" },
+    );
+  if (isWasmComponent(wasm))
+    throw new BinaryTargetError(
+      path,
+      "WebAssembly components are not supported by the native opening route",
+      { constraint: "wasm_component_requires_static_inspection" },
     );
   if (hasZipSignature(magic.subarray(0, observed.bytesRead))) {
     // The HarmonyOS App Pack suffix `.app` is a root-input concept; a nested
