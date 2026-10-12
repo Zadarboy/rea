@@ -4,6 +4,8 @@ interface ParsedDyldSymbol {
   readonly weak: boolean | null;
   readonly reexport: boolean | null;
   readonly source: string | null;
+  /** The source library's name for a symbol it re-exports under another name. */
+  readonly sourceSymbol?: string;
 }
 
 /** Decode Apple dyld inventory rows, projecting export offsets to VM addresses. */
@@ -33,7 +35,10 @@ export const parseDyldSymbols = (
         ];
       return [];
     }
-    const reexport = /^\[re-export\]\s+(.+?)(?:\s+\(from (.+)\))?$/u.exec(line);
+    // dyld_info prints `_sym (from lib)`, or `_new (_old from lib)` when the
+    // source library names the symbol differently. Try the plain form first.
+    const reexport =
+      /^\[re-export\]\s+(.+?)(?:\s+\((?:(.+?)\s+)??from (.+)\))?$/u.exec(line);
     if (reexport?.[1] !== undefined)
       return [
         {
@@ -41,7 +46,8 @@ export const parseDyldSymbols = (
           address: null,
           weak: null,
           reexport: true,
-          source: reexport[2] ?? null,
+          source: reexport[3] ?? null,
+          ...(reexport[2] === undefined ? {} : { sourceSymbol: reexport[2] }),
         },
       ];
     const exported = /^(0x[\da-f]+)\s+(.+?)(?:\s+\[([^\]]+)\])?$/iu.exec(line);
