@@ -423,6 +423,65 @@ describe("binary target I/O: explicit kinds and executable headers", () => {
     });
   });
 
+  it("extracts CodeView RSDS debug metadata from a PE target", async () => {
+    const directory = await createTestTempDirectory("rea-target-");
+    const path = join(directory, "symbols.exe");
+    await writeFile(
+      path,
+      pe(0x8664, 64, 0x0002, false, {
+        type: "RSDS",
+        pdbPath: "C:\\build\\test.pdb",
+        guid: "12345678-abcd-ef01-2345-6789abcdef01",
+        age: 3,
+      }),
+    );
+    const result = await parseBinaryTarget(path, {
+      cwd: directory,
+      hostArchitecture: "x64",
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw result.error;
+    expect(result.value).toMatchObject({
+      format: "pe",
+      architecture: "x86_64",
+      codeView: {
+        pdbPath: "C:\\build\\test.pdb",
+        pdbFileName: "test.pdb",
+        guid: "12345678-abcd-ef01-2345-6789abcdef01",
+        age: 3,
+      },
+    });
+  });
+
+  it("extracts CodeView NB10 debug metadata from a PE target", async () => {
+    const directory = await createTestTempDirectory("rea-target-");
+    const path = join(directory, "legacy.exe");
+    await writeFile(
+      path,
+      pe(0x014c, 64, 0x0002, false, {
+        type: "NB10",
+        pdbPath: "D:\\old\\legacy.pdb",
+        age: 1,
+      }),
+    );
+    const result = await parseBinaryTarget(path, {
+      cwd: directory,
+      hostArchitecture: "ia32",
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw result.error;
+    expect(result.value).toMatchObject({
+      format: "pe",
+      architecture: "x86",
+      codeView: {
+        pdbPath: "D:\\old\\legacy.pdb",
+        pdbFileName: "legacy.pdb",
+        guid: null,
+        age: 1,
+      },
+    });
+  });
+
   it("refuses a truncated Mach-O header before any provider sees it", async () => {
     const directory = await createTestTempDirectory("rea-target-");
     const path = join(directory, "truncated");

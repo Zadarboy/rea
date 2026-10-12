@@ -3,6 +3,7 @@ import type {
   ElfFamilyMetadata,
   HeaderArchitecture,
   MipsElfMetadata,
+  PeCodeViewRecord,
   RiscvElfMetadata,
   UniversalMachOSlice,
 } from "./binaryTargetTypes.js";
@@ -45,6 +46,7 @@ export type ExecutableMetadata =
         | "shared-library"
         | "non-executable";
       readonly managed: boolean;
+      readonly codeView?: PeCodeViewRecord;
     };
 
 /**
@@ -251,7 +253,8 @@ const parseMz = (
       );
     if (windowsHeader.signature !== "PE")
       return err("invalid or truncated Windows executable header in MZ image");
-    return parsePeRecord(bytes.subarray(offset));
+    const codeView = parsePeCodeViewFromBuffer(bytes, offset);
+    return parsePeRecord(bytes.subarray(offset), codeView);
   }
   const parsed = parseDosMzHeader(bytes, fileSize, signatureAtOffset);
   return parsed.ok
@@ -266,6 +269,7 @@ const parseMz = (
 /** Parse a bounded PE signature, COFF record, and optional header without I/O. */
 export const parsePeRecord = (
   record: Buffer,
+  codeView?: PeCodeViewRecord,
 ): Result<ExecutableMetadata, string> => {
   if (
     record.length < 24 ||
@@ -284,6 +288,7 @@ export const parsePeRecord = (
   if (machine.nativeOsOverride && !managed.value)
     return err("unsupported PE architecture");
   const characteristics = record.readUInt16LE(22);
+  const resolvedCodeView = codeView ?? parsePeCodeViewFromBuffer(record, 0);
   return ok({
     format: "pe",
     architecture,
@@ -295,7 +300,159 @@ export const parsePeRecord = (
           ? "application"
           : "shared-library",
     managed: managed.value,
+    ...(resolvedCodeView !== undefined ? { codeView: resolvedCodeView } : {}),
   });
+};
+
+/** Parse CodeView record data (RSDS or NB10) from raw data bytes. */
+export const parseCodeViewData = (
+  buffer: Buffer,
+  sizeOfData: number,
+): PeCodeViewRecord | undefined => {
+  if (sizeOfData < 16 || buffer.length < 16) return undefined;
+  const magic = buffer.subarray(0, 4).toString("ascii");
+  if (magic === "RSDS" && sizeOfData >= 24 && buffer.length >= 24) {
+    const part1 = buffer.readUInt32LE(4).toString(16).padStart(8, "0");
+    const part2 = buffer.readUInt16LE(8).toString(16).padStart(4, "0");
+    const part3 = buffer.readUInt16LE(10).toString(16).padStart(4, "0");
+    const part4 = buffer.subarray(12, 14).toString("hex");
+    const part5 = buffer.subarray(14, 20).toString("hex");
+    const guid = `${part1}-${part2}-${part3}-${part4}-${part5}`;
+    const age = buffer.readUInt32LE(20);
+    const nullIdx = buffer.indexOf(0, 24);
+    const end =
+      nullIdx !== -1 && nullIdx < sizeOfData
+        ? nullIdx
+        : Math.min(sizeOfData, buffer.length);
+    const pdbPath = buffer.toString("utf8", 24, end);
+    const pdbFileName = pdbPath.split(/[/\\]/u).pop() ?? pdbPath;
+    return { pdbPath, pdbFileName, guid, age };
+  }
+  if (magic === "NB10") {
+    const age = buffer.readUInt32LE(12);
+    const nullIdx = buffer.indexOf(0, 16);
+    const end =
+      nullIdx !== -1 && nullIdx < sizeOfData
+        ? nullIdx
+        : Math.min(sizeOfData, buffer.length);
+    const pdbPath = buffer.toString("utf8", 16, end);
+    const pdbFileName = pdbPath.split(/[/\\]/u).pop() ?? pdbPath;
+    return { pdbPath, pdbFileName, guid: null, age };
+  }
+  return undefined;
+};
+
+/** Locate the debug directory RVA and size from a PE optional header. */
+export const peDebugDirectoryEntry = (
+  optionalHeader: Buffer,
+): { readonly debugRva: number; readonly debugSize: number } | undefined => {
+  if (optionalHeader.length < 2) return undefined;
+  const magic = optionalHeader.readUInt16LE(0);
+  if (magic !== 0x10b && magic !== 0x20b) return undefined;
+  const directoryOffset = magic === 0x20b ? 112 : 96;
+  const directoryCountOffset = directoryOffset - 4;
+  if (optionalHeader.length < directoryCountOffset + 4) return undefined;
+  const directoryCount = optionalHeader.readUInt32LE(directoryCountOffset);
+  if (directoryCount <= 6) return undefined;
+  const debugEntryOffset = directoryOffset + 6 * 8;
+  if (optionalHeader.length < debugEntryOffset + 8) return undefined;
+  const debugRva = optionalHeader.readUInt32LE(debugEntryOffset);
+  const debugSize = optionalHeader.readUInt32LE(debugEntryOffset + 4);
+  if (debugRva === 0 || debugSize < 28) return undefined;
+  return { debugRva, debugSize };
+};
+
+/** Translate an RVA to an absolute file offset using the PE section table. */
+export const peRvaToFileOffset = (
+  rva: number,
+  sectionTable: Buffer,
+  numberOfSections: number,
+): number | undefined => {
+  for (let i = 0; i < numberOfSections; i++) {
+    const offset = i * 40;
+    if (sectionTable.length < offset + 40) break;
+    const virtualAddress = sectionTable.readUInt32LE(offset + 12);
+    const sizeOfRawData = sectionTable.readUInt32LE(offset + 16);
+    const pointerToRawData = sectionTable.readUInt32LE(offset + 20);
+    if (
+      pointerToRawData > 0 &&
+      rva >= virtualAddress &&
+      rva - virtualAddress < sizeOfRawData
+    ) {
+      return pointerToRawData + (rva - virtualAddress);
+    }
+  }
+  return undefined;
+};
+
+/** Parse CodeView metadata from a bounded in-memory PE image buffer. */
+export const parsePeCodeViewFromBuffer = (
+  fileBytes: Buffer,
+  peOffset: number,
+): PeCodeViewRecord | undefined => {
+  if (fileBytes.length < peOffset + 24) return undefined;
+  const numberOfSections = fileBytes.readUInt16LE(peOffset + 6);
+  const optionalHeaderSize = fileBytes.readUInt16LE(peOffset + 20);
+  if (
+    optionalHeaderSize > 4096 ||
+    fileBytes.length < peOffset + 24 + optionalHeaderSize
+  )
+    return undefined;
+  const optionalHeader = fileBytes.subarray(
+    peOffset + 24,
+    peOffset + 24 + optionalHeaderSize,
+  );
+  const debugDir = peDebugDirectoryEntry(optionalHeader);
+  if (debugDir === undefined) return undefined;
+  const sectionTableOffset = peOffset + 24 + optionalHeaderSize;
+  const sectionTableSize = numberOfSections * 40;
+  if (fileBytes.length < sectionTableOffset + sectionTableSize)
+    return undefined;
+  const sectionTable = fileBytes.subarray(
+    sectionTableOffset,
+    sectionTableOffset + sectionTableSize,
+  );
+  const debugFileOffset = peRvaToFileOffset(
+    debugDir.debugRva,
+    sectionTable,
+    numberOfSections,
+  );
+  if (debugFileOffset === undefined || fileBytes.length < debugFileOffset + 28)
+    return undefined;
+  const maxDebugBytes = Math.min(
+    debugDir.debugSize,
+    fileBytes.length - debugFileOffset,
+  );
+  const numEntries = Math.floor(maxDebugBytes / 28);
+  for (let j = 0; j < numEntries; j++) {
+    const entryOffset = debugFileOffset + j * 28;
+    const type = fileBytes.readUInt32LE(entryOffset + 12);
+    if (type !== 2) continue; // IMAGE_DEBUG_TYPE_CODEVIEW
+    const sizeOfData = fileBytes.readUInt32LE(entryOffset + 16);
+    let pointerToRawData = fileBytes.readUInt32LE(entryOffset + 24);
+    if (pointerToRawData === 0) {
+      const addressOfRawData = fileBytes.readUInt32LE(entryOffset + 20);
+      const mapped = peRvaToFileOffset(
+        addressOfRawData,
+        sectionTable,
+        numberOfSections,
+      );
+      if (mapped === undefined) continue;
+      pointerToRawData = mapped;
+    }
+    if (
+      sizeOfData < 16 ||
+      fileBytes.length < pointerToRawData + Math.min(sizeOfData, 24)
+    )
+      continue;
+    const codeViewData = fileBytes.subarray(
+      pointerToRawData,
+      Math.min(fileBytes.length, pointerToRawData + sizeOfData),
+    );
+    const parsed = parseCodeViewData(codeViewData, sizeOfData);
+    if (parsed !== undefined) return parsed;
+  }
+  return undefined;
 };
 
 const peManagedStatus = (
