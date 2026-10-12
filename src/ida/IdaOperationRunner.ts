@@ -86,6 +86,8 @@ export class IdaOperationRunner {
   readonly locations: EvidenceLocation[] = [];
   readonly limitations: string[] = [];
   relationshipCoverage: RelationshipCoverage | undefined;
+  /** The upstream cap flag of the last `xrefs_to` read, when the producer reported one. */
+  referencesTruncated: boolean | undefined;
   constructor(
     private readonly connection: IdaMcpConnection,
     private readonly protocol: "legacy" | "modern" | "native",
@@ -390,6 +392,7 @@ export class IdaOperationRunner {
       throw new AnalysisProtocolError(
         `IDA xrefs failed: ${page?.error ?? "missing references"}`,
       );
+    if (page.more !== undefined) this.referencesTruncated = page.more;
     if (page.more === true)
       this.limitations.push(
         "Upstream xrefs_to capped results at 1000 references; additional references remain unknown.",

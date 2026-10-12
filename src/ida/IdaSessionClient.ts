@@ -269,6 +269,9 @@ export class IdaSessionClient implements AnalysisClient {
           ...(runner.relationshipCoverage === undefined
             ? {}
             : { relationshipCoverage: runner.relationshipCoverage }),
+          ...(runner.referencesTruncated !== undefined
+            ? { referencesTruncated: runner.referencesTruncated }
+            : {}),
           locations: [
             { kind: "artifact-path", path: this.target.path },
             ...runner.locations,
